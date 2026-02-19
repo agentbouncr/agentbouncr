@@ -6,7 +6,7 @@
   "description": "Agent Governance Framework — CLI (agent, audit, report, test)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentbouncr/framework.git",
+    "url": "https://github.com/agentbouncr/agentbouncr.git",
     "directory": "packages/cli"
   },
   "publishConfig": {

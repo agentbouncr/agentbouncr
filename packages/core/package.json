@@ -6,7 +6,7 @@
   "description": "Agent Governance Framework — Core Engine (Permission Layer, Policy Engine, Audit Trail)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentbouncr/framework.git",
+    "url": "https://github.com/agentbouncr/agentbouncr.git",
     "directory": "packages/core"
   },
   "publishConfig": {

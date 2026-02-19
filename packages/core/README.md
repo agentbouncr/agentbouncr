@@ -40,7 +40,7 @@ const result = await governance.evaluate({
 console.log(result.allowed); // false
 ```
 
-For full documentation, examples, and architecture overview, see the [main repository](https://github.com/agentbouncr/framework).
+For full documentation, examples, and architecture overview, see the [main repository](https://github.com/agentbouncr/agentbouncr).
 
 ## License
 

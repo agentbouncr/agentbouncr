@@ -22,7 +22,7 @@ await db.runMigrations();
 const governance = new GovernanceMiddleware({ db, logger });
 ```
 
-For full documentation, see the [main repository](https://github.com/agentbouncr/framework).
+For full documentation, see the [main repository](https://github.com/agentbouncr/agentbouncr).
 
 ## License
 

@@ -6,7 +6,7 @@
   "description": "Agent Governance Framework — SQLite DatabaseAdapter",
   "repository": {
     "type": "git",
-    "url": "https://github.com/agentbouncr/framework.git",
+    "url": "https://github.com/agentbouncr/agentbouncr.git",
     "directory": "packages/sqlite"
   },
   "publishConfig": {
