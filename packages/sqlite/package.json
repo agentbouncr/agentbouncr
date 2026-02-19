@@ -1,0 +1,44 @@
+{
+  "name": "@agentbouncr/sqlite",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "description": "Agent Governance Framework — SQLite DatabaseAdapter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentbouncr/framework.git",
+    "directory": "packages/sqlite"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agentbouncr/core": "^0.1.0",
+    "better-sqlite3": "^12.6.2",
+    "pino": "^10.3.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13"
+  }
+}

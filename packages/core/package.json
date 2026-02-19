@@ -1,0 +1,45 @@
+{
+  "name": "@agentbouncr/core",
+  "version": "0.1.0",
+  "type": "module",
+  "license": "Elastic-2.0",
+  "description": "Agent Governance Framework — Core Engine (Permission Layer, Policy Engine, Audit Trail)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/agentbouncr/framework.git",
+    "directory": "packages/core"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "pino": "^10.3.1",
+    "safe-regex2": "^5.0.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.2.3"
+  }
+}

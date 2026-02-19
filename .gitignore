@@ -1,0 +1,23 @@
+node_modules/
+dist/
+coverage/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+
+# Internal docs — must never be committed
+PROJEKT.md
+CLAUDE.md
+MEMORY.md
+.claude/
+docs/audits/
+docs/reviews/
+
+# Enterprise code — safety net
+ee/
+
+# CI/CD artifacts
+CICD_rot.txt
