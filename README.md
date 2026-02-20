@@ -1,21 +1,13 @@
-# AgentBouncr — Agent Governance Framework
+# AgentBouncr
 
-> **The source-available governance layer for AI agents.** Not the agent decides what it can do — the system decides.
+[![npm version](https://img.shields.io/npm/v/@agentbouncr/core.svg)](https://www.npmjs.com/package/@agentbouncr/core)
+[![CI](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml/badge.svg)](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml)
+[![License: ELv2](https://img.shields.io/badge/License-ELv2-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
 
-Every AI agent tool call is checked against configurable policies before execution. Every decision is logged in a tamper-proof audit trail. Works with any agent framework (LangChain, Vercel AI SDK, OpenAI Agents SDK, CrewAI, n8n) via adapters.
+A governance layer that sits between AI agents and their tools. Policy engine, audit trail, kill switch.
 
-## Features
-
-- **Policy Engine** — JSON policies with 11 condition operators, deny-before-allow (fail-secure)
-- **Audit Trail** — Append-only with SHA-256 hash-chain, verifiable integrity
-- **Kill-Switch** — Instant emergency stop, no LLM involvement
-- **Event System** — 20 event types with async dispatch
-- **MCP Import** — Import tools from Model Context Protocol manifests
-- **Vercel AI SDK Adapter** — Wrap any AI SDK tool with governance checks
-- **W3C Trace Context** — OpenTelemetry-compatible trace IDs
-- **Injection Detection** — Pattern-based detection (log + alert, no auto-block)
-- **CLI** — Agent management, audit verification, MCP import
-- **Zero-Config** — Works without any configuration (default: allow-all, log everything)
+---
 
 ## Quick Start
 
@@ -28,114 +20,82 @@ import { GovernanceMiddleware } from '@agentbouncr/core';
 
 const governance = new GovernanceMiddleware();
 
-// Define a policy
 governance.setPolicy({
-  name: 'basic-security',
+  name: 'production',
   version: '1.0',
   rules: [
-    {
-      tool: 'file_write',
-      effect: 'deny',
-      condition: { path: { startsWith: '/etc/' } },
-      reason: 'Writing to /etc/ is not permitted',
-    },
+    { tool: 'approve_payment', effect: 'deny', condition: { amount: { gt: 5000 } }, reason: 'Payments over 5000 require manual approval' },
+    { tool: 'file_write', effect: 'deny', condition: { path: { startsWith: '/etc/' } } },
     { tool: '*', effect: 'allow' },
   ],
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
 });
 
-// Check a tool call
 const result = await governance.evaluate({
-  agentId: 'my-agent',
-  tool: 'file_write',
-  params: { path: '/etc/passwd' },
+  agentId: 'claims-agent',
+  tool: 'approve_payment',
+  params: { amount: 12000, claimId: 'CLM-4821' },
 });
 
-console.log(result.allowed); // false
-console.log(result.reason);  // "Writing to /etc/ is not permitted"
+console.log(result.allowed);  // false
+console.log(result.reason);   // "Payments over 5000 require manual approval"
+console.log(result.traceId);  // "00-a1b2c3..."  (W3C Trace Context)
 ```
+
+Works with any agent framework — LangChain, Vercel AI SDK, OpenAI Agents SDK, CrewAI, n8n.
+
+## Features
+
+**Permission Layer** — Per-agent tool allowlists. Register agents with explicit tool sets, enforce at runtime.
+
+**Policy Engine** — Declarative JSON rules with 11 condition operators (`equals`, `gt`, `startsWith`, `matches`, ...), rate limits, and human-in-the-loop approval gates. Deny-before-allow, fail-secure.
+
+**Audit Trail** — Append-only log with SHA-256 hash chain. Every decision is recorded with trace ID, duration, and failure category. Tamper-evident, verifiable, exportable.
+
+**Kill Switch** — Deterministic emergency stop. All tool calls are blocked synchronously in the evaluate path, no LLM involvement. Sub-millisecond activation.
+
+**Injection Detection** — Configurable pattern matching for prompt injection attempts. Detects and logs without blocking (defense-in-depth, not a firewall).
+
+**Event System** — 20 event types with async fire-and-forget dispatch. Subscribe to `tool_call.denied`, `killswitch.activated`, `agent.stopped`, etc. Built-in webhook support in Enterprise.
+
+**W3C Trace Context** — OpenTelemetry-compatible 128-bit trace IDs propagated through every governance decision.
 
 ## Architecture
 
 ```
+Your AI Agent (LangChain, Vercel AI SDK, OpenAI, CrewAI, ...)
+         │
+         │  evaluate({ agentId, tool, params })
+         ▼
 ┌─────────────────────────────────────────────┐
-│              Your AI Agent                   │
-│  (LangChain, Vercel AI SDK, OpenAI, etc.)   │
-└─────────────────┬───────────────────────────┘
-                  │ evaluate()
-┌─────────────────▼───────────────────────────┐
-│         @agentbouncr/core                    │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
-│  │  Policy   │ │  Event   │ │ Kill-Switch  │ │
-│  │  Engine   │ │  System  │ │              │ │
-│  └──────────┘ └──────────┘ └──────────────┘ │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────┐ │
-│  │ Injection│ │  Audit   │ │    Trace     │ │
-│  │ Detection│ │  Trail   │ │   Context    │ │
-│  └──────────┘ └──────────┘ └──────────────┘ │
-└─────────────────┬───────────────────────────┘
-                  │ DatabaseAdapter
-┌─────────────────▼───────────────────────────┐
-│           @agentbouncr/sqlite                │
-└─────────────────────────────────────────────┘
+│            @agentbouncr/core                │
+│                                             │
+│  ┌────────────┐  ┌────────────┐  ┌───────┐ │
+│  │   Policy   │  │   Audit    │  │ Kill  │ │
+│  │   Engine   │  │   Trail    │  │Switch │ │
+│  └────────────┘  └────────────┘  └───────┘ │
+│  ┌────────────┐  ┌────────────┐  ┌───────┐ │
+│  │ Injection  │  │   Event    │  │ Trace │ │
+│  │ Detection  │  │   System   │  │Context│ │
+│  └────────────┘  └────────────┘  └───────┘ │
+└──────────────────────┬──────────────────────┘
+                       │
+         ┌─────────────┴──────────────┐
+         ▼                            ▼
+  @agentbouncr/sqlite          @agentbouncr/postgres
+  (dev / single-node)          (production, Enterprise)
 ```
 
 ## Packages
 
-| Package | Description | License |
+| Package | npm | Description |
 |---|---|---|
-| `@agentbouncr/core` | Policy Engine, Audit Trail, Events, Kill-Switch | ELv2 |
-| `@agentbouncr/sqlite` | SQLite DatabaseAdapter (better-sqlite3) | ELv2 |
-| `@agentbouncr/cli` | CLI for agent management and audit verification | ELv2 |
+| [`@agentbouncr/core`](packages/core) | [![npm](https://img.shields.io/npm/v/@agentbouncr/core.svg)](https://www.npmjs.com/package/@agentbouncr/core) | Policy engine, audit trail, events, kill switch |
+| [`@agentbouncr/sqlite`](packages/sqlite) | [![npm](https://img.shields.io/npm/v/@agentbouncr/sqlite.svg)](https://www.npmjs.com/package/@agentbouncr/sqlite) | SQLite storage adapter (better-sqlite3) |
+| [`@agentbouncr/cli`](packages/cli) | [![npm](https://img.shields.io/npm/v/@agentbouncr/cli.svg)](https://www.npmjs.com/package/@agentbouncr/cli) | CLI for agent management and audit verification |
 
-## Policy Example
-
-Policies are plain JSON, validated with Zod:
-
-```json
-{
-  "name": "restrict-payments",
-  "version": "1.0",
-  "rules": [
-    {
-      "tool": "approve_payment",
-      "effect": "deny",
-      "condition": { "amount": { "gt": 5000 } },
-      "reason": "Payments over 5000 require manual approval"
-    },
-    {
-      "tool": "file_write",
-      "effect": "deny",
-      "condition": { "path": { "startsWith": "/etc/" } },
-      "reason": "System files are read-only"
-    },
-    { "tool": "*", "effect": "allow" }
-  ]
-}
-```
-
-**Condition operators:** `equals`, `notEquals`, `startsWith`, `endsWith`, `contains`, `gt`, `lt`, `gte`, `lte`, `in`, `matches`
-
-## CLI
-
-```bash
-npm install -g @agentbouncr/cli
-
-# Agent management
-governance agent create --config ./agent.yaml
-governance agent start claims-agent
-governance agent list
-governance agent stop claims-agent
-
-# Audit trail
-governance audit verify
-
-# MCP import
-governance import --mcp ./mcp-manifest.json
-```
-
-## With SQLite Persistence
+## With Persistence
 
 ```bash
 npm install @agentbouncr/core @agentbouncr/sqlite
@@ -146,32 +106,22 @@ import { GovernanceMiddleware } from '@agentbouncr/core';
 import { SqliteDatabaseAdapter } from '@agentbouncr/sqlite';
 import pino from 'pino';
 
-const logger = pino({ level: 'info' });
-const db = new SqliteDatabaseAdapter(logger, './governance.db');
+const db = new SqliteDatabaseAdapter(pino({ level: 'info' }), './governance.db');
 await db.runMigrations();
 
-const governance = new GovernanceMiddleware({ db, logger });
+const governance = new GovernanceMiddleware({ db });
 
-// Register and start an agent
+// Register an agent with an explicit tool allowlist
 await governance.registerAgent({
   agentId: 'claims-agent',
   name: 'Claims Processor',
-  allowedTools: ['search_claims', 'approve_payment'],
+  allowedTools: ['search_claims', 'approve_payment', 'send_email'],
 });
-await governance.startAgent('claims-agent');
+
+// Audit trail is now persisted — verify integrity anytime
+const verification = await db.verifyAuditChain();
+console.log(verification.valid); // true
 ```
-
-## Examples
-
-- [**quickstart.ts**](examples/quickstart.ts) — Zero-config, two tool calls (allowed + denied)
-- [**claims-processor.ts**](examples/claims-processor.ts) — SQLite, conditions, events, kill-switch
-- [**mcp-integration.ts**](examples/mcp-integration.ts) — MCP import with auto-risk-detection
-
-## Documentation
-
-- [Getting Started](docs/getting-started.md) — Step-by-step guide (<5 minutes)
-- [API Reference](docs/api-reference.md) — Complete API documentation
-- [MCP Import Guide](docs/mcp-import-guide.md) — Importing tools from MCP manifests
 
 ## Vercel AI SDK Integration
 
@@ -189,6 +139,65 @@ const governedTools = wrapToolsWithGovernance(myTools, {
 // Denied tools throw GovernanceError instead of executing
 ```
 
+## Policy Reference
+
+Policies are declarative JSON, validated with Zod at runtime:
+
+```json
+{
+  "name": "restrict-payments",
+  "version": "1.0",
+  "rules": [
+    {
+      "tool": "approve_payment",
+      "effect": "deny",
+      "condition": { "amount": { "gt": 5000 } },
+      "reason": "Payments over 5000 require manual approval",
+      "requireApproval": true
+    },
+    {
+      "tool": "send_email",
+      "effect": "allow",
+      "rateLimit": { "maxPerMinute": 10 }
+    },
+    { "tool": "*", "effect": "allow" }
+  ]
+}
+```
+
+**Condition operators:** `equals` `notEquals` `startsWith` `endsWith` `contains` `gt` `lt` `gte` `lte` `in` `matches`
+
+## CLI
+
+```bash
+npm install -g @agentbouncr/cli
+
+governance agent list
+governance agent start claims-agent
+governance audit verify
+governance import --mcp ./mcp-manifest.json
+```
+
+## EU AI Act
+
+AgentBouncr addresses key requirements of the EU AI Act for high-risk AI systems (effective August 2026). The policy engine maps to Art. 9 (risk management), the append-only audit trail with hash-chain verification satisfies Art. 12 (record-keeping), and approval workflows provide Art. 14 (human oversight) capabilities.
+
+## Enterprise
+
+Looking for multi-tenant PostgreSQL, SSO via Clerk, RBAC, a management dashboard, webhook integrations, and compliance reporting? See [agentbouncr.com](https://agentbouncr.com).
+
+## Examples
+
+- [**quickstart.ts**](examples/quickstart.ts) — Zero-config, policy evaluation in 10 lines
+- [**claims-processor.ts**](examples/claims-processor.ts) — SQLite persistence, events, kill-switch
+- [**mcp-integration.ts**](examples/mcp-integration.ts) — MCP import with auto-risk-detection
+
+## Documentation
+
+- [Getting Started](docs/getting-started.md) — Up and running in 5 minutes
+- [API Reference](docs/api-reference.md) — Complete API documentation
+- [MCP Import Guide](docs/mcp-import-guide.md) — Importing tools from MCP manifests
+
 ## License
 
-Elastic License 2.0 (ELv2) — see [LICENSE](LICENSE)
+[Elastic License 2.0 (ELv2)](LICENSE) — free to use, modify, and distribute. Cannot be offered as a competing managed service.
