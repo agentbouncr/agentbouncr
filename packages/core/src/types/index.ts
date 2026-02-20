@@ -107,7 +107,7 @@ export interface AuditEvent {
   agentId: string;
   tool: string;
   params?: Record<string, unknown>;
-  result: 'allowed' | 'denied' | 'error';
+  result: 'allowed' | 'denied' | 'error' | 'retention_boundary';
   reason?: string;
   durationMs: number;
   failureCategory?: FailureCategory;
@@ -120,7 +120,7 @@ export type AuditEventInput = Omit<AuditEvent, 'id' | 'previousHash' | 'hash'>;
 export interface AuditFilter {
   agentId?: string;
   tool?: string;
-  result?: 'allowed' | 'denied' | 'error';
+  result?: 'allowed' | 'denied' | 'error' | 'retention_boundary';
   traceId?: string;
   fromTimestamp?: string;
   toTimestamp?: string;

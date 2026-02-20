@@ -247,6 +247,12 @@ export class SqliteDatabaseAdapter implements DatabaseAdapter {
       params.push(term, term);
     }
 
+    // Exclude retention_boundary marker events from general queries (Phase 5.0a).
+    // Only included when explicitly filtered via result='retention_boundary'.
+    if (!filter.result) {
+      conditions.push("result != 'retention_boundary'");
+    }
+
     const where = conditions.length > 0
       ? `WHERE ${conditions.join(' AND ')}`
       : '';
@@ -287,8 +293,10 @@ export class SqliteDatabaseAdapter implements DatabaseAdapter {
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
-      // Check chain link: previousHash must match the previous event's hash
-      if (row.previous_hash !== previousHash) {
+      // retention_boundary markers may follow deleted events — skip chain-link check
+      // but still verify the marker's own hash integrity (Phase 5.0a)
+      const isMarker = row.result === 'retention_boundary';
+      if (!isMarker && row.previous_hash !== previousHash) {
         return {
           valid: false,
           brokenAt: row.id,
