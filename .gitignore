@@ -19,5 +19,3 @@ docs/reviews/
 # Enterprise code — safety net
 ee/
 
-# CI/CD artifacts
-CICD_rot.txt
