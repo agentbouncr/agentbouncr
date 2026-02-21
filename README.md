@@ -83,8 +83,8 @@ Your AI Agent (LangChain, Vercel AI SDK, OpenAI, CrewAI, ...)
                        │
          ┌─────────────┴──────────────┐
          ▼                            ▼
-  @agentbouncr/sqlite          @agentbouncr/postgres
-  (dev / single-node)          (production, Enterprise)
+  @agentbouncr/sqlite          Your database adapter
+  (included)                   (implement DatabaseAdapter)
 ```
 
 ## Packages
@@ -184,7 +184,14 @@ AgentBouncr addresses key requirements of the EU AI Act for high-risk AI systems
 
 ## Enterprise
 
-Looking for multi-tenant PostgreSQL, SSO via Clerk, RBAC, a management dashboard, webhook integrations, and compliance reporting? See [agentbouncr.com](https://agentbouncr.com).
+The open-source core handles policy evaluation, audit trails, and kill switch for any scale. When you need multi-tenant management, the Enterprise Dashboard at agentbouncr.com adds:
+- **PostgreSQL adapter** with hash-chain verification and retention policies
+- **OIDC/SAML SSO** with self-hosted auth (EU-hosted, GDPR-compliant)
+- **Compliance Reports** mapped to EU AI Act Articles 9, 12, 14
+- **Approval Workflows** for human-in-the-loop governance
+- **Webhooks + RBAC** for team-scale operations
+
+→ [agentbouncr.com](https://agentbouncr.com)
 
 ## Examples
 
