@@ -184,7 +184,7 @@ AgentBouncr addresses key requirements of the EU AI Act for high-risk AI systems
 
 ## Enterprise
 
-The open-source core handles policy evaluation, audit trails, and kill switch for any scale. When you need multi-tenant management, the Enterprise Dashboard at agentbouncr.com adds:
+The source-available core handles policy evaluation, audit trails, and kill switch for any scale. When you need multi-tenant management, the Enterprise Dashboard at agentbouncr.com adds:
 - **PostgreSQL adapter** with hash-chain verification and retention policies
 - **OIDC/SAML SSO** with self-hosted auth (EU-hosted, GDPR-compliant)
 - **Compliance Reports** mapped to EU AI Act Articles 9, 12, 14
