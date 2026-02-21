@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/@agentbouncr/core.svg)](https://www.npmjs.com/package/@agentbouncr/core)
 [![CI](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml/badge.svg)](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-600%2B%20passing-brightgreen)](https://github.com/agentbouncr/agentbouncr/actions)
 [![License: ELv2](https://img.shields.io/badge/License-ELv2-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
 
