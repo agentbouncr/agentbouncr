@@ -29,16 +29,16 @@ jobs:
         run: npm test
 
       - name: Publish @agentbouncr/core
-        run: npm publish --workspace=packages/core
+        run: npm publish --workspace=packages/core || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @agentbouncr/sqlite
-        run: npm publish --workspace=packages/sqlite
+        run: npm publish --workspace=packages/sqlite || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish @agentbouncr/cli
-        run: npm publish --workspace=packages/cli
+        run: npm publish --workspace=packages/cli || true
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
