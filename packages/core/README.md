@@ -1,6 +1,6 @@
 # @agentbouncr/core
 
-The governance layer for AI agents. Policy Engine, Audit Trail, Kill-Switch, Event System, and Injection Detection.
+The governance layer for AI agents. Deterministic rules — not another AI — decide what each agent can do. Policy Engine, Audit Trail, Kill-Switch, Event System, and Injection Detection. Works with LangChain, Vercel AI SDK, OpenAI, CrewAI, or any agent framework.
 
 ## Installation
 

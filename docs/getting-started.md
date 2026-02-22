@@ -4,7 +4,7 @@ This guide walks you through installing the Agent Governance Framework and runni
 
 ## Prerequisites
 
-- Node.js 18+ (ES2022 support)
+- Node.js 20+
 - npm 9+
 
 ## Installation

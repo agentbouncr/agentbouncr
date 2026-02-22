@@ -2,11 +2,23 @@
 
 [![npm version](https://img.shields.io/npm/v/@agentbouncr/core.svg)](https://www.npmjs.com/package/@agentbouncr/core)
 [![CI](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml/badge.svg)](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml)
-[![Tests](https://img.shields.io/badge/tests-700%2B%20passing-brightgreen)](https://github.com/agentbouncr/agentbouncr/actions)
+[![Tests](https://img.shields.io/badge/tests-1%2C400%2B%20passing-brightgreen)](https://github.com/agentbouncr/agentbouncr/actions)
 [![License: ELv2](https://img.shields.io/badge/License-ELv2-blue.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
 
 A governance layer that sits between AI agents and their tools. Policy engine, audit trail, kill switch.
+
+---
+
+## Why
+
+AI agents are getting access to powerful tools — payments, databases, APIs, file systems. But most agent frameworks let the agent decide what it's allowed to do. That's like giving every employee a master key and trusting them not to open the wrong doors.
+
+**AgentBouncr is the control layer.** Deterministic rules — not another AI — decide what each agent can do. Every decision is logged in a tamper-proof audit trail. And if something goes wrong, a kill-switch stops everything instantly.
+
+- **Prompt injection can't bypass it** — permissions are checked by logic, not by a model
+- **Fail-secure** — if in doubt, the tool call is blocked
+- **Framework-agnostic** — works with LangChain, Vercel AI SDK, OpenAI, CrewAI, n8n, or your own code
 
 ---
 
@@ -126,19 +138,71 @@ console.log(verification.valid); // true
 
 ## Vercel AI SDK Integration
 
+AgentBouncr includes a built-in adapter for the [Vercel AI SDK](https://sdk.vercel.ai/). Wrap your tools with `wrapToolsWithGovernance` — denied tools throw `GovernanceError` before `execute()` is ever called.
+
 ```typescript
-import { wrapToolsWithGovernance, GovernanceMiddleware } from '@agentbouncr/core';
+import { generateText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+import { GovernanceMiddleware, wrapToolsWithGovernance, PolicyEngine } from '@agentbouncr/core';
+import pino from 'pino';
+
+const logger = pino({ level: 'info' });
+const governance = new GovernanceMiddleware({ logger });
+
+const policy = {
+  name: 'production',
+  version: '1.0',
+  rules: [
+    { tool: 'approve_payment', effect: 'deny', condition: { amount: { gt: 5000 } }, reason: 'Requires manual approval' },
+    { tool: '*', effect: 'allow' },
+  ],
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
+governance.setPolicy(policy);
+
+// Wrap tools — governance checks run before every execute()
+const governedTools = wrapToolsWithGovernance(myTools, {
+  agentId: 'claims-agent',
+  policyEngine: new PolicyEngine(logger),
+  policy,
+  logger,
+});
+
+const { text } = await generateText({
+  model: openai('gpt-4o'),
+  tools: governedTools,
+  prompt: 'Approve payment of 12000 EUR for claim CLM-4821',
+});
+// → GovernanceError: "Requires manual approval"
+```
+
+See [examples/vercel-ai-sdk.ts](examples/vercel-ai-sdk.ts) for a complete runnable example.
+
+## LangChain Integration
+
+No adapter package needed — wrap tool execution with a governance check in a few lines:
+
+```typescript
+import { GovernanceMiddleware } from '@agentbouncr/core';
 
 const governance = new GovernanceMiddleware();
 governance.setPolicy(myPolicy);
 
-// Wraps each tool's execute() with a governance check
-const governedTools = wrapToolsWithGovernance(myTools, {
+// Before executing any LangChain tool:
+const result = await governance.evaluate({
   agentId: 'my-agent',
-  governance,
+  tool: toolName,
+  params: toolInput,
 });
-// Denied tools throw GovernanceError instead of executing
+
+if (!result.allowed) {
+  throw new Error(`Blocked by policy: ${result.reason}`);
+}
+// Otherwise: proceed with original tool execution
 ```
+
+See [examples/langchain-integration.ts](examples/langchain-integration.ts) for a full example with `DynamicStructuredTool`.
 
 ## Policy Reference
 
@@ -198,6 +262,8 @@ The source-available core handles policy evaluation, audit trails, and kill swit
 
 - [**quickstart.ts**](examples/quickstart.ts) — Zero-config, policy evaluation in 10 lines
 - [**claims-processor.ts**](examples/claims-processor.ts) — SQLite persistence, events, kill-switch
+- [**vercel-ai-sdk.ts**](examples/vercel-ai-sdk.ts) — Vercel AI SDK with governed tools
+- [**langchain-integration.ts**](examples/langchain-integration.ts) — LangChain manual governance wiring
 - [**mcp-integration.ts**](examples/mcp-integration.ts) — MCP import with auto-risk-detection
 
 ## Documentation
