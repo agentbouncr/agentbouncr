@@ -24,7 +24,7 @@ export function registerStopCommand(program: Command): void {
 
         let stopped = 0;
         for (const agent of agents) {
-          if (agent.status === 'running' || agent.status === 'registered') {
+          if (agent.status === 'active' || agent.status === 'idle') {
             await mw.stopAgent(agent.agentId, 'Emergency stop via CLI');
             stopped++;
           }

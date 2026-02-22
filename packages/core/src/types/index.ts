@@ -179,8 +179,9 @@ export interface PolicyRule {
 }
 
 // --- Agent Lifecycle ---
+// BREAKING (0.2.0): 'running' renamed to 'active', new states: idle, suspended, decommissioned
 
-export type AgentRunStatus = 'registered' | 'running' | 'stopped' | 'error';
+export type AgentRunStatus = 'registered' | 'active' | 'idle' | 'suspended' | 'stopped' | 'error' | 'decommissioned';
 
 export interface AgentConfig {
   agentId: string;

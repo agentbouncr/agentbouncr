@@ -1,6 +1,6 @@
 {
   "name": "@agentbouncr/sqlite",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "license": "Elastic-2.0",
   "description": "Agent Governance Framework — SQLite DatabaseAdapter",
@@ -31,7 +31,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@agentbouncr/core": "^0.1.0",
+    "@agentbouncr/core": "^0.2.0",
     "better-sqlite3": "^12.6.2",
     "pino": "^10.3.1"
   },

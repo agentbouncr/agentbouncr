@@ -57,7 +57,9 @@ function makeMockDb(_overrides?: Partial<DatabaseAdapter>): DatabaseAdapter {
     getPolicyByName: vi.fn<(name: string) => Promise<Policy | null>>().mockResolvedValue(null),
     deletePolicy: vi.fn<(name: string) => Promise<boolean>>().mockResolvedValue(true),
     registerAgent: vi.fn<(config: AgentConfig) => Promise<string>>().mockImplementation((config) => Promise.resolve(config.agentId)),
-    getAgentStatus: vi.fn<(agentId: string) => Promise<AgentStatus | null>>().mockResolvedValue(null),
+    getAgentStatus: vi.fn<(agentId: string) => Promise<AgentStatus | null>>().mockResolvedValue({
+      agentId: 'test-agent', name: 'Test', status: 'registered', registeredAt: '2026-01-01T00:00:00Z',
+    }),
     updateAgentStatus: vi.fn<(agentId: string, status: AgentRunStatus) => Promise<void>>().mockResolvedValue(undefined),
     listAgents: vi.fn<() => Promise<AgentStatus[]>>().mockResolvedValue([]),
     deleteAgent: vi.fn<(agentId: string) => Promise<boolean>>().mockResolvedValue(true),
@@ -247,7 +249,7 @@ describe('GovernanceMiddleware', () => {
   describe('evaluate() — Kill-Switch', () => {
     it('should deny when kill-switch is active', async () => {
       const mw = new GovernanceMiddleware(makeOptions());
-      mw.emergencyStop('Test emergency');
+      await mw.emergencyStop('Test emergency');
 
       const result = await mw.evaluate({
         agentId: 'test-agent',
@@ -262,7 +264,7 @@ describe('GovernanceMiddleware', () => {
       const mw = new GovernanceMiddleware(makeOptions({
         policy: makePolicy({ rules: [{ tool: '*', effect: 'allow' }] }),
       }));
-      mw.emergencyStop('Emergency');
+      await mw.emergencyStop('Emergency');
 
       const result = await mw.evaluate({
         agentId: 'test-agent',
@@ -274,8 +276,8 @@ describe('GovernanceMiddleware', () => {
 
     it('should allow again after kill-switch reset', async () => {
       const mw = new GovernanceMiddleware(makeOptions());
-      mw.emergencyStop('Emergency');
-      mw.resetKillSwitch();
+      await mw.emergencyStop('Emergency');
+      await mw.resetKillSwitch();
 
       const result = await mw.evaluate({
         agentId: 'test-agent',
@@ -317,7 +319,7 @@ describe('GovernanceMiddleware', () => {
       const events: GovernanceEvent[] = [];
       mw.on('tool_call.denied', (event) => { events.push(event); });
 
-      mw.emergencyStop('Emergency');
+      await mw.emergencyStop('Emergency');
       await mw.evaluate({ agentId: 'a', tool: 'x' });
 
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -360,7 +362,7 @@ describe('GovernanceMiddleware', () => {
 
     it('should start agent via DB', async () => {
       await mw.startAgent('test-agent');
-      expect(db.updateAgentStatus).toHaveBeenCalledWith('test-agent', 'running');
+      expect(db.updateAgentStatus).toHaveBeenCalledWith('test-agent', 'active');
     });
 
     it('should emit agent.started on start', async () => {
@@ -375,11 +377,17 @@ describe('GovernanceMiddleware', () => {
     });
 
     it('should stop agent via DB', async () => {
+      (db.getAgentStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+        agentId: 'test-agent', name: 'Test', status: 'active', registeredAt: '2026-01-01T00:00:00Z',
+      });
       await mw.stopAgent('test-agent', 'Maintenance');
       expect(db.updateAgentStatus).toHaveBeenCalledWith('test-agent', 'stopped');
     });
 
     it('should emit agent.stopped on stop', async () => {
+      (db.getAgentStatus as ReturnType<typeof vi.fn>).mockResolvedValue({
+        agentId: 'test-agent', name: 'Test', status: 'active', registeredAt: '2026-01-01T00:00:00Z',
+      });
       const events: GovernanceEvent[] = [];
       mw.on('agent.stopped', (event) => { events.push(event); });
 
@@ -394,18 +402,19 @@ describe('GovernanceMiddleware', () => {
       const mockStatus: AgentStatus = {
         agentId: 'test-agent',
         name: 'Test',
-        status: 'running',
+        status: 'active',
         registeredAt: '2026-01-01T00:00:00Z',
+        lastActiveAt: new Date().toISOString(), // recent = stays active
       };
       (db.getAgentStatus as ReturnType<typeof vi.fn>).mockResolvedValue(mockStatus);
 
       const status = await mw.getAgentStatus('test-agent');
-      expect(status).toEqual(mockStatus);
+      expect(status?.status).toBe('active');
     });
 
     it('should list agents via DB', async () => {
       const mockAgents: AgentStatus[] = [
-        { agentId: 'a', name: 'A', status: 'running', registeredAt: '2026-01-01T00:00:00Z' },
+        { agentId: 'a', name: 'A', status: 'active', registeredAt: '2026-01-01T00:00:00Z', lastActiveAt: new Date().toISOString() },
         { agentId: 'b', name: 'B', status: 'stopped', registeredAt: '2026-01-02T00:00:00Z' },
       ];
       (db.listAgents as ReturnType<typeof vi.fn>).mockResolvedValue(mockAgents);
@@ -490,12 +499,12 @@ describe('GovernanceMiddleware', () => {
   });
 
   describe('Kill-Switch integration', () => {
-    it('should report isKillSwitchActive correctly', () => {
+    it('should report isKillSwitchActive correctly', async () => {
       const mw = new GovernanceMiddleware(makeOptions());
       expect(mw.isKillSwitchActive()).toBe(false);
-      mw.emergencyStop('Test');
+      await mw.emergencyStop('Test');
       expect(mw.isKillSwitchActive()).toBe(true);
-      mw.resetKillSwitch();
+      await mw.resetKillSwitch();
       expect(mw.isKillSwitchActive()).toBe(false);
     });
 
@@ -504,14 +513,14 @@ describe('GovernanceMiddleware', () => {
       const events: GovernanceEvent[] = [];
       mw.on('killswitch.activated', (event) => { events.push(event); });
 
-      mw.emergencyStop('Critical failure');
+      await mw.emergencyStop('Critical failure');
 
       await new Promise((resolve) => setTimeout(resolve, 50));
       expect(events).toHaveLength(1);
       expect(events[0].data.reason).toBe('Critical failure');
     });
 
-    it('should return KillSwitchStatus via getKillSwitchStatus()', () => {
+    it('should return KillSwitchStatus via getKillSwitchStatus()', async () => {
       const mw = new GovernanceMiddleware(makeOptions());
 
       const status1 = mw.getKillSwitchStatus();
@@ -519,7 +528,7 @@ describe('GovernanceMiddleware', () => {
       expect(status1.activatedAt).toBeUndefined();
       expect(status1.reason).toBeUndefined();
 
-      mw.emergencyStop('Test reason');
+      await mw.emergencyStop('Test reason');
 
       const status2 = mw.getKillSwitchStatus();
       expect(status2.active).toBe(true);
@@ -723,7 +732,7 @@ describe('GovernanceMiddleware', () => {
       (db.getActivePolicy as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('DB down'));
 
       const mw = new GovernanceMiddleware(makeOptions({ db }));
-      mw.emergencyStop('Emergency');
+      await mw.emergencyStop('Emergency');
 
       const result = await mw.evaluate({ agentId: 'a', tool: 'x' });
       expect(result.allowed).toBe(false);
@@ -766,7 +775,7 @@ describe('GovernanceMiddleware', () => {
       expect(scoped).toBe(mw);
     });
 
-    it('should isolate kill-switch state between tenants', () => {
+    it('should isolate kill-switch state between tenants', async () => {
       const scopedDbA = makeMockDb();
       const scopedDbB = makeMockDb();
       const db = makeMockDb();
@@ -776,16 +785,16 @@ describe('GovernanceMiddleware', () => {
       const scopedA = mw.forTenant('tenant-a');
       const scopedB = mw.forTenant('tenant-b');
 
-      scopedA.emergencyStop('Tenant A emergency');
+      await scopedA.emergencyStop('Tenant A emergency');
       expect(scopedA.isKillSwitchActive()).toBe(true);
       expect(scopedB.isKillSwitchActive()).toBe(false);
       expect(mw.isKillSwitchActive()).toBe(false); // global unaffected
 
-      scopedA.resetKillSwitch();
+      await scopedA.resetKillSwitch();
       expect(scopedA.isKillSwitchActive()).toBe(false);
     });
 
-    it('should return tenant-specific status from scoped middleware', () => {
+    it('should return tenant-specific status from scoped middleware', async () => {
       const scopedDbA = makeMockDb();
       const db = makeMockDb();
       db.forTenant = vi.fn(() => scopedDbA);
@@ -793,7 +802,7 @@ describe('GovernanceMiddleware', () => {
       const mw = new GovernanceMiddleware(makeOptions({ db }));
       const scopedA = mw.forTenant('tenant-a');
 
-      scopedA.emergencyStop('Tenant A down');
+      await scopedA.emergencyStop('Tenant A down');
 
       const statusA = scopedA.getKillSwitchStatus();
       expect(statusA.active).toBe(true);
@@ -813,7 +822,7 @@ describe('GovernanceMiddleware', () => {
       const scopedA = mw.forTenant('tenant-a');
       const scopedB = mw.forTenant('tenant-b');
 
-      scopedA.emergencyStop('Emergency');
+      await scopedA.emergencyStop('Emergency');
 
       const resultA = await scopedA.evaluate({ agentId: 'agent', tool: 'test', params: {} });
       expect(resultA.allowed).toBe(false);
@@ -1391,7 +1400,7 @@ describe('GovernanceMiddleware', () => {
     it('should write audit event on kill-switch denial', async () => {
       const db = makeMockDb();
       const mw = new GovernanceMiddleware(makeOptions({ db }));
-      mw.emergencyStop('Emergency');
+      await mw.emergencyStop('Emergency');
 
       await mw.evaluate({ agentId: 'test-agent', tool: 'any_tool' });
 
@@ -1409,7 +1418,7 @@ describe('GovernanceMiddleware', () => {
         new Error('DB connection lost'),
       );
       const mw = new GovernanceMiddleware(makeOptions({ db }));
-      mw.emergencyStop('Emergency');
+      await mw.emergencyStop('Emergency');
 
       const result = await mw.evaluate({ agentId: 'test-agent', tool: 'any_tool' });
 
@@ -1562,7 +1571,7 @@ describe('GovernanceMiddleware', () => {
       (db.writeAuditEvent as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Connection lost'));
 
       const mw = new GovernanceMiddleware(makeOptions({ db }));
-      mw.emergencyStop('test');
+      await mw.emergencyStop('test');
 
       const events: GovernanceEvent[] = [];
       mw.on('audit.write_failure', (e) => events.push(e));
@@ -1575,7 +1584,7 @@ describe('GovernanceMiddleware', () => {
       expect(events[0].data.error).toBe('Database write failed');
       expect(events[0].data.context).toBe('killswitch_denial');
 
-      mw.resetKillSwitch();
+      await mw.resetKillSwitch();
     });
   });
 
@@ -1585,8 +1594,8 @@ describe('GovernanceMiddleware', () => {
       const events: GovernanceEvent[] = [];
       mw.on('killswitch.deactivated', (e) => events.push(e));
 
-      mw.emergencyStop('Incident');
-      mw.resetKillSwitch('All clear');
+      await mw.emergencyStop('Incident');
+      await mw.resetKillSwitch('All clear');
 
       await new Promise((r) => setTimeout(r, 50));
       expect(events).toHaveLength(1);
@@ -1599,8 +1608,8 @@ describe('GovernanceMiddleware', () => {
       const events: GovernanceEvent[] = [];
       mw.on('killswitch.deactivated', (e) => events.push(e));
 
-      mw.emergencyStop('Test');
-      mw.resetKillSwitch();
+      await mw.emergencyStop('Test');
+      await mw.resetKillSwitch();
 
       await new Promise((r) => setTimeout(r, 50));
       expect(events).toHaveLength(1);
@@ -1612,7 +1621,7 @@ describe('GovernanceMiddleware', () => {
       const events: GovernanceEvent[] = [];
       mw.on('killswitch.deactivated', (e) => events.push(e));
 
-      mw.resetKillSwitch(); // Not active — should be no-op
+      await mw.resetKillSwitch(); // Not active — should be no-op
 
       await new Promise((r) => setTimeout(r, 50));
       expect(events).toHaveLength(0);

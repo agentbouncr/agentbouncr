@@ -70,7 +70,7 @@ describe('CLI Commands (functional)', () => {
 
       await mw.startAgent('lifecycle-agent');
       let status = await mw.getAgentStatus('lifecycle-agent');
-      expect(status?.status).toBe('running');
+      expect(status?.status).toBe('active');
 
       await mw.stopAgent('lifecycle-agent');
       status = await mw.getAgentStatus('lifecycle-agent');
@@ -153,20 +153,21 @@ describe('CLI Commands (functional)', () => {
   });
 
   describe('stop --all', () => {
-    it('should stop all running agents', async () => {
-      await mw.registerAgent({ agentId: 'r1', name: 'Running 1', allowedTools: [] });
-      await mw.registerAgent({ agentId: 'r2', name: 'Running 2', allowedTools: [] });
+    it('should stop all active agents', async () => {
+      await mw.registerAgent({ agentId: 'r1', name: 'Active 1', allowedTools: [] });
+      await mw.registerAgent({ agentId: 'r2', name: 'Active 2', allowedTools: [] });
       await mw.registerAgent({ agentId: 's1', name: 'Already Stopped', allowedTools: [] });
 
       await mw.startAgent('r1');
       await mw.startAgent('r2');
+      await mw.startAgent('s1');
       await mw.stopAgent('s1');
 
-      // Simulate stop --all: stop all running/registered agents
+      // Simulate stop --all: stop all active/idle agents
       const agents = await mw.listAgents();
       let stopped = 0;
       for (const agent of agents) {
-        if (agent.status === 'running' || agent.status === 'registered') {
+        if (agent.status === 'active' || agent.status === 'idle') {
           await mw.stopAgent(agent.agentId, 'Emergency stop via CLI');
           stopped++;
         }

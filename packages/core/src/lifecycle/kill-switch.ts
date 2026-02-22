@@ -24,9 +24,15 @@ export class KillSwitchManager {
   private globalActive = false;
   private globalActivatedAt?: string;
   private globalReason?: string;
+  private globalSuspendedAgentIds = new Set<string>();
 
   // Per-tenant state (Multi-Tenant)
-  private readonly tenantState = new Map<string, { active: boolean; activatedAt?: string; reason?: string }>();
+  private readonly tenantState = new Map<string, {
+    active: boolean;
+    activatedAt?: string;
+    reason?: string;
+    suspendedAgentIds: Set<string>;
+  }>();
 
   constructor(
     private readonly logger: pino.Logger,
@@ -56,7 +62,7 @@ export class KillSwitchManager {
       if (state?.active) return;
 
       const activatedAt = new Date().toISOString();
-      this.tenantState.set(tenantId, { active: true, activatedAt, reason });
+      this.tenantState.set(tenantId, { active: true, activatedAt, reason, suspendedAgentIds: new Set() });
 
       this.logger.fatal(
         { reason, activatedAt, tenantId },
@@ -128,12 +134,37 @@ export class KillSwitchManager {
     this.globalActive = false;
     this.globalActivatedAt = undefined;
     this.globalReason = undefined;
+    this.globalSuspendedAgentIds.clear();
 
     this.eventEmitter?.emitEvent({
       type: 'killswitch.deactivated',
       timestamp: new Date().toISOString(),
       data: { reason: reason ?? 'Manual reset', previousReason },
     });
+  }
+
+  /**
+   * Track an agent that was suspended by the kill-switch.
+   * Used by GovernanceMiddleware.emergencyStop() to remember which agents
+   * were suspended by the kill-switch (vs. manually suspended before).
+   */
+  trackSuspendedAgent(agentId: string, tenantId?: string): void {
+    if (tenantId) {
+      this.tenantState.get(tenantId)?.suspendedAgentIds.add(agentId);
+    } else {
+      this.globalSuspendedAgentIds.add(agentId);
+    }
+  }
+
+  /**
+   * Get the set of agent IDs suspended by the kill-switch.
+   * Used by GovernanceMiddleware.resetKillSwitch() to reactivate only these agents.
+   */
+  getSuspendedAgentIds(tenantId?: string): ReadonlySet<string> {
+    if (tenantId) {
+      return this.tenantState.get(tenantId)?.suspendedAgentIds ?? new Set();
+    }
+    return this.globalSuspendedAgentIds;
   }
 
   /**

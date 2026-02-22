@@ -42,13 +42,13 @@ describe('SqliteDatabaseAdapter', () => {
     it('should create tables without error', async () => {
       // Already called in beforeEach — verify schema version
       const version = await adapter.getSchemaVersion();
-      expect(version).toBe(3);
+      expect(version).toBe(4);
     });
 
     it('should be idempotent (running twice is safe)', async () => {
       await adapter.runMigrations();
       const version = await adapter.getSchemaVersion();
-      expect(version).toBe(3);
+      expect(version).toBe(4);
     });
   });
 
@@ -60,9 +60,9 @@ describe('SqliteDatabaseAdapter', () => {
       await fresh.close();
     });
 
-    it('should return 3 after all migrations', async () => {
+    it('should return 4 after all migrations', async () => {
       const version = await adapter.getSchemaVersion();
-      expect(version).toBe(3);
+      expect(version).toBe(4);
     });
   });
 

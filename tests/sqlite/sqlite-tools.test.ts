@@ -37,9 +37,9 @@ describe('SqliteDatabaseAdapter — Tool Registry', () => {
   });
 
   describe('schema version', () => {
-    it('should be at version 3 after migrations', async () => {
+    it('should be at version 4 after migrations', async () => {
       const version = await adapter.getSchemaVersion();
-      expect(version).toBe(3);
+      expect(version).toBe(4);
     });
   });
 

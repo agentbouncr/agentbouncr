@@ -36,17 +36,17 @@ describe('SqliteDatabaseAdapter — Agent Lifecycle Extension', () => {
   describe('updateAgentStatus()', () => {
     it('should update agent status to running', async () => {
       await adapter.registerAgent(testAgent);
-      await adapter.updateAgentStatus('test-agent', 'running');
+      await adapter.updateAgentStatus('test-agent', 'active');
 
       const status = await adapter.getAgentStatus('test-agent');
       expect(status).not.toBeNull();
       if (!status) return;
-      expect(status.status).toBe('running');
+      expect(status.status).toBe('active');
     });
 
     it('should update agent status to stopped', async () => {
       await adapter.registerAgent(testAgent);
-      await adapter.updateAgentStatus('test-agent', 'running');
+      await adapter.updateAgentStatus('test-agent', 'active');
       await adapter.updateAgentStatus('test-agent', 'stopped');
 
       const status = await adapter.getAgentStatus('test-agent');
@@ -71,7 +71,7 @@ describe('SqliteDatabaseAdapter — Agent Lifecycle Extension', () => {
       const before = await adapter.getAgentStatus('test-agent');
       expect(before?.lastActiveAt).toBeUndefined();
 
-      await adapter.updateAgentStatus('test-agent', 'running');
+      await adapter.updateAgentStatus('test-agent', 'active');
 
       const after = await adapter.getAgentStatus('test-agent');
       expect(after?.lastActiveAt).toBeDefined();
@@ -79,7 +79,7 @@ describe('SqliteDatabaseAdapter — Agent Lifecycle Extension', () => {
 
     it('should throw GovernanceError with code AGENT_NOT_FOUND for unknown agent', async () => {
       try {
-        await adapter.updateAgentStatus('nonexistent', 'running');
+        await adapter.updateAgentStatus('nonexistent', 'active');
         expect.unreachable('Should have thrown');
       } catch (err) {
         expect(err).toBeInstanceOf(GovernanceError);
@@ -125,10 +125,10 @@ describe('SqliteDatabaseAdapter — Agent Lifecycle Extension', () => {
 
     it('should reflect updated status', async () => {
       await adapter.registerAgent(testAgent);
-      await adapter.updateAgentStatus('test-agent', 'running');
+      await adapter.updateAgentStatus('test-agent', 'active');
 
       const agents = await adapter.listAgents();
-      expect(agents[0].status).toBe('running');
+      expect(agents[0].status).toBe('active');
     });
   });
 

@@ -22,6 +22,7 @@ import type {
   PolicyVersion,
   AgentConfig,
   AgentStatus,
+  AgentRunStatus,
   ApprovalRequest,
   ApprovalFilter,
   ApprovalResolution,
@@ -35,6 +36,7 @@ import {
   type GovernanceEventListener,
 } from '../events/event-emitter.js';
 import { KillSwitchManager } from './kill-switch.js';
+import { assertTransition, computeEffectiveStatus } from './agent-state-machine.js';
 import { generateTraceId } from '../tracing/trace-context.js';
 import { policySchema } from '../core/policy-schema.js';
 import { evaluateRequestSchema, agentConfigSchema } from './middleware-schemas.js';
@@ -314,40 +316,67 @@ export class GovernanceMiddleware {
     return id;
   }
 
-  async startAgent(agentId: string): Promise<void> {
-    const db = this.requireDb('startAgent');
-    await db.updateAgentStatus(agentId, 'running');
+  /**
+   * Transition an agent to a new status with state machine validation.
+   * Applies lazy idle detection before checking transition validity.
+   * Emits the appropriate event for the target status.
+   */
+  async transitionAgent(agentId: string, targetStatus: AgentRunStatus, reason?: string): Promise<void> {
+    const db = this.requireDb('transitionAgent');
+    const agent = await db.getAgentStatus(agentId);
+    if (!agent) {
+      throw new GovernanceError(
+        `Agent '${agentId}' not found`,
+        'AGENT_NOT_FOUND',
+        'config_error',
+        { agentId },
+      );
+    }
 
-    this.eventEmitter.emitEvent({
-      type: 'agent.started',
-      timestamp: new Date().toISOString(),
-      agentId,
-      tenantId: this.tenantId,
-      data: { agentId },
-    });
+    const effectiveStatus = computeEffectiveStatus(agent);
+    assertTransition(effectiveStatus, targetStatus);
+
+    await db.updateAgentStatus(agentId, targetStatus);
+
+    const eventMap: Partial<Record<AgentRunStatus, GovernanceEventType>> = {
+      active: 'agent.started',
+      stopped: 'agent.stopped',
+      error: 'agent.error',
+      suspended: 'agent.suspended',
+      idle: 'agent.idle',
+      decommissioned: 'agent.decommissioned',
+    };
+    const eventType = eventMap[targetStatus];
+    if (eventType) {
+      this.eventEmitter.emitEvent({
+        type: eventType,
+        timestamp: new Date().toISOString(),
+        agentId,
+        tenantId: this.tenantId,
+        data: { agentId, from: effectiveStatus, to: targetStatus, reason },
+      });
+    }
+  }
+
+  async startAgent(agentId: string): Promise<void> {
+    return this.transitionAgent(agentId, 'active');
   }
 
   async stopAgent(agentId: string, reason?: string): Promise<void> {
-    const db = this.requireDb('stopAgent');
-    await db.updateAgentStatus(agentId, 'stopped');
-
-    this.eventEmitter.emitEvent({
-      type: 'agent.stopped',
-      timestamp: new Date().toISOString(),
-      agentId,
-      tenantId: this.tenantId,
-      data: { agentId, reason },
-    });
+    return this.transitionAgent(agentId, 'stopped', reason);
   }
 
   async getAgentStatus(agentId: string): Promise<AgentStatus | null> {
     const db = this.requireDb('getAgentStatus');
-    return db.getAgentStatus(agentId);
+    const agent = await db.getAgentStatus(agentId);
+    if (!agent) return null;
+    return { ...agent, status: computeEffectiveStatus(agent) };
   }
 
   async listAgents(): Promise<AgentStatus[]> {
     const db = this.requireDb('listAgents');
-    return db.listAgents();
+    const agents = await db.listAgents();
+    return agents.map(a => ({ ...a, status: computeEffectiveStatus(a) }));
   }
 
   async deleteAgent(agentId: string): Promise<boolean> {
@@ -369,12 +398,56 @@ export class GovernanceMiddleware {
 
   // --- Kill-Switch ---
 
-  emergencyStop(reason?: string): void {
+  /**
+   * Activate the kill-switch and suspend all active/idle agents.
+   * Only agents that are active or idle get suspended — already-suspended
+   * agents are tracked separately so resetKillSwitch() knows which to reactivate.
+   */
+  async emergencyStop(reason?: string): Promise<void> {
     this.killSwitch.activate(reason ?? 'Manual emergency stop', this.tenantId);
+
+    if (this.db) {
+      const agents = await this.db.listAgents();
+      for (const agent of agents) {
+        const effective = computeEffectiveStatus(agent);
+        if (effective === 'active' || effective === 'idle') {
+          await this.db.updateAgentStatus(agent.agentId, 'suspended');
+          this.killSwitch.trackSuspendedAgent(agent.agentId, this.tenantId);
+          this.eventEmitter.emitEvent({
+            type: 'agent.suspended',
+            timestamp: new Date().toISOString(),
+            agentId: agent.agentId,
+            tenantId: this.tenantId,
+            data: { agentId: agent.agentId, reason: 'Kill-switch activated', from: effective },
+          });
+        }
+      }
+    }
   }
 
-  resetKillSwitch(reason?: string): void {
+  /**
+   * Reset the kill-switch and reactivate agents that were suspended BY the kill-switch.
+   * Agents that were manually suspended before the kill-switch stay suspended.
+   */
+  async resetKillSwitch(reason?: string): Promise<void> {
+    const suspendedByKs = new Set(this.killSwitch.getSuspendedAgentIds(this.tenantId));
     this.killSwitch.reset(this.tenantId, reason);
+
+    if (this.db && suspendedByKs.size > 0) {
+      const agents = await this.db.listAgents();
+      for (const agent of agents) {
+        if (agent.status === 'suspended' && suspendedByKs.has(agent.agentId)) {
+          await this.db.updateAgentStatus(agent.agentId, 'active');
+          this.eventEmitter.emitEvent({
+            type: 'agent.started',
+            timestamp: new Date().toISOString(),
+            agentId: agent.agentId,
+            tenantId: this.tenantId,
+            data: { agentId: agent.agentId, reason: 'Kill-switch reset', from: 'suspended' },
+          });
+        }
+      }
+    }
   }
 
   isKillSwitchActive(): boolean {

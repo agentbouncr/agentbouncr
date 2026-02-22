@@ -135,6 +135,12 @@ export {
 } from './lifecycle/kill-switch.js';
 
 export {
+  AGENT_TRANSITIONS,
+  assertTransition,
+  computeEffectiveStatus,
+} from './lifecycle/agent-state-machine.js';
+
+export {
   evaluateRequestSchema,
   agentConfigSchema,
   dryRunRequestSchema,

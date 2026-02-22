@@ -810,9 +810,18 @@ function rowToAgentStatus(row: AgentRow): AgentStatus {
     agentId: row.agent_id,
     name: row.name,
     status: row.status as AgentStatus['status'],
-    registeredAt: row.registered_at,
-    lastActiveAt: row.last_active_at ?? undefined,
+    registeredAt: normalizeUtcTimestamp(row.registered_at) ?? row.registered_at,
+    lastActiveAt: normalizeUtcTimestamp(row.last_active_at) ?? undefined,
   };
+}
+
+/** SQLite datetime('now') returns 'YYYY-MM-DD HH:MM:SS' (UTC without 'Z'). Normalize to ISO 8601. */
+function normalizeUtcTimestamp(ts: string | null): string | null {
+  if (!ts) return null;
+  // Already has timezone info → return as-is
+  if (ts.endsWith('Z') || ts.includes('+') || ts.includes('T')) return ts;
+  // SQLite format: '2026-02-22 11:41:17' → '2026-02-22T11:41:17Z'
+  return ts.replace(' ', 'T') + 'Z';
 }
 
 function rowToPolicyVersion(row: PolicyVersionRow): PolicyVersion {
