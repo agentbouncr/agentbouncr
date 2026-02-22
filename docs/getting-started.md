@@ -157,7 +157,7 @@ const result = await governance.evaluate({
 
 // Check agent status
 const status = await governance.getAgentStatus('claims-agent');
-console.log(status); // { agentId: 'claims-agent', status: 'running', ... }
+console.log(status); // { agentId: 'claims-agent', status: 'active', ... }
 
 // List all agents
 const agents = await governance.listAgents();

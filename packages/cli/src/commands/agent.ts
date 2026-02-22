@@ -43,7 +43,7 @@ export function registerAgentCommands(program: Command): void {
 
   agent
     .command('start')
-    .description('Start an agent (set status to running)')
+    .description('Start an agent (set status to active)')
     .argument('<agent-id>', 'Agent ID')
     .option('--db <path>', 'Database path', './governance.db')
     .action(async (agentId: string, opts: { db: string }) => {

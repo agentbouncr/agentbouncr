@@ -5,6 +5,6 @@
  * Zero-config: DB file auto-created, schema auto-migrated.
  */
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.0';
 
 export { SqliteDatabaseAdapter } from './sqlite-adapter.js';

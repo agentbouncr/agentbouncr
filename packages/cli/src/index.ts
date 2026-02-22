@@ -5,7 +5,7 @@
  * For the CLI binary entry point, see ./bin.ts.
  */
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.2.2';
 
 export { registerAgentCommands } from './commands/agent.js';
 export { registerAuditCommands } from './commands/audit.js';

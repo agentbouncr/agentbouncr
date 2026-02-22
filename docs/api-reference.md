@@ -111,7 +111,7 @@ async deleteAgent(agentId: string): Promise<boolean>
 |---|---|---|
 | `agentId` | `string` | Agent identifier |
 | `name` | `string` | Human-readable name |
-| `status` | `AgentRunStatus` | `'registered' \| 'running' \| 'stopped' \| 'error'` |
+| `status` | `AgentRunStatus` | `'registered' \| 'active' \| 'idle' \| 'suspended' \| 'stopped' \| 'error' \| 'decommissioned'` |
 | `registeredAt` | `string` | ISO 8601 timestamp |
 | `lastActiveAt` | `string \| undefined` | Last activity timestamp |
 

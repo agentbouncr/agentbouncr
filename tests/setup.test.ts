@@ -5,14 +5,14 @@ import { VERSION as cliVersion } from "@agentbouncr/cli";
 
 describe("Monorepo Setup", () => {
   it("should resolve @agentbouncr/core workspace", () => {
-    expect(coreVersion).toBe("0.1.0");
+    expect(coreVersion).toBe("0.2.0");
   });
 
   it("should resolve @agentbouncr/sqlite workspace", () => {
-    expect(sqliteVersion).toBe("0.1.0");
+    expect(sqliteVersion).toBe("0.2.0");
   });
 
   it("should resolve @agentbouncr/cli workspace", () => {
-    expect(cliVersion).toBe("0.1.0");
+    expect(cliVersion).toBe("0.2.2");
   });
 });
