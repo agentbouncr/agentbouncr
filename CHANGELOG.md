@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+### Security Hardening
+
+- **Input validation**: Added `max()` constraints to all Zod schema string fields to prevent abuse via oversized payloads (DSGVO Art. 25 — data minimization)
+  - `evaluateRequestSchema`: `agentId` max 128, `tool` max 256, `traceId` max 256
+  - `dryRunRequestSchema`: same limits as evaluate
+  - `agentConfigSchema`: `agentId` max 128, `name` max 256, `description` max 2000, `policyName` max 128, `allowedTools` entries max 256
+
 ## 0.2.0
 
 ### Breaking Changes
