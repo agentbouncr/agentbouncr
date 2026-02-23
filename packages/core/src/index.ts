@@ -5,7 +5,7 @@
  * The agent does not decide what it may do — the system decides.
  */
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.2.1';
 
 // Types
 export {
