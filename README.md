@@ -1,12 +1,16 @@
 # AgentBouncr
 
-[![npm version](https://img.shields.io/npm/v/@agentbouncr/core.svg)](https://www.npmjs.com/package/@agentbouncr/core)
+[![PyPI version](https://img.shields.io/pypi/v/agentbouncr.svg?label=PyPI%3A%20agentbouncr)](https://pypi.org/project/agentbouncr/)
+[![npm version](https://img.shields.io/npm/v/agentbouncr.svg?label=npm%3A%20agentbouncr)](https://www.npmjs.com/package/agentbouncr)
+[![npm: @agentbouncr/core](https://img.shields.io/npm/v/@agentbouncr/core.svg?label=npm%3A%20%40agentbouncr%2Fcore)](https://www.npmjs.com/package/@agentbouncr/core)
 [![CI](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml/badge.svg)](https://github.com/agentbouncr/agentbouncr/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-1%2C400%2B%20passing-brightgreen)](https://github.com/agentbouncr/agentbouncr/actions)
-[![License: ELv2](https://img.shields.io/badge/License-ELv2-blue.svg)](LICENSE)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)](https://www.typescriptlang.org/)
+[![Framework License: ELv2](https://img.shields.io/badge/Framework-ELv2-blue.svg)](LICENSE)
+[![SDK License: MIT](https://img.shields.io/badge/SDKs-MIT-green.svg)](https://github.com/agentbouncr)
 
-A governance layer that sits between AI agents and their tools. Policy engine, audit trail, kill switch.
+Pre-execution policy engine for AI agents. Every tool call checked before execution — deterministic policies, tamper-evident audit trail, kill switch.
+
+**Links:** [Website](https://agentbouncr.com) · [API Docs](https://agentbouncr.com/api/docs) · [PyPI](https://pypi.org/project/agentbouncr/) · [npm (SDK)](https://www.npmjs.com/package/agentbouncr) · [npm (core)](https://www.npmjs.com/package/@agentbouncr/core)
 
 ---
 
@@ -23,6 +27,33 @@ AI agents are getting access to powerful tools — payments, databases, APIs, fi
 ---
 
 ## Quick Start
+
+Two ways to use AgentBouncr:
+
+1. **Managed service** — drop-in SDKs for Python and TypeScript that talk to the hosted API ([agentbouncr.com](https://agentbouncr.com)). Easiest path to production.
+2. **Self-hosted framework** — embed `@agentbouncr/core` directly in your Node.js / TypeScript app. Source-available under ELv2.
+
+### Managed Service — SDKs
+
+```bash
+pip install agentbouncr      # Python
+npm install agentbouncr      # TypeScript
+```
+
+Get a key at [agentbouncr.com](https://agentbouncr.com). SDKs are MIT-licensed. Full API reference: [agentbouncr.com/api/docs](https://agentbouncr.com/api/docs).
+
+#### Python — LangChain integration (3 lines)
+
+```python
+from agentbouncr.langchain import AgentBouncrCallbackHandler
+
+handler = AgentBouncrCallbackHandler(api_key="sk_live_...")
+executor = AgentExecutor(agent=agent, tools=tools, callbacks=[handler])
+```
+
+Every tool call routed through the executor is now checked against your policies before execution.
+
+### Self-Hosted Framework — `@agentbouncr/core`
 
 ```bash
 npm install @agentbouncr/core
@@ -269,7 +300,8 @@ The source-available core handles policy evaluation, audit trails, and kill swit
 ## Documentation
 
 - [Getting Started](docs/getting-started.md) — Up and running in 5 minutes
-- [API Reference](docs/api-reference.md) — Complete API documentation
+- [Framework API Reference](docs/api-reference.md) — `@agentbouncr/core` API documentation
+- [Hosted API Docs](https://agentbouncr.com/api/docs) — REST API reference for the managed service
 - [MCP Import Guide](docs/mcp-import-guide.md) — Importing tools from MCP manifests
 
 ## License
