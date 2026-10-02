@@ -1,5 +1,22 @@
 # AgentBouncr
 
+> ## ⏸️ This project is paused
+>
+> Development has stopped and the hosted service at `agentbouncr.com` has been shut
+> down. This repository stays public and the code stays MIT/ELv2 licensed, but it is
+> **unmaintained**: no releases, no fixes, no support, and issues and pull requests
+> will not be answered.
+>
+> **What this means in practice**
+>
+> - The policy engine itself is self-contained and still runs locally.
+> - Anything pointing at the hosted API will fail — the endpoint is gone.
+> - The published packages still install but receive no further releases.
+> - Links below to `agentbouncr.com/api/docs` and the CI/test badges are stale.
+>
+> See [agentbouncr.com](https://agentbouncr.com) for the full status.
+> Forking is welcome; the licence has not changed.
+
 [![PyPI version](https://img.shields.io/pypi/v/agentbouncr.svg?label=PyPI%3A%20agentbouncr)](https://pypi.org/project/agentbouncr/)
 [![npm version](https://img.shields.io/npm/v/agentbouncr.svg?label=npm%3A%20agentbouncr)](https://www.npmjs.com/package/agentbouncr)
 [![npm: @agentbouncr/core](https://img.shields.io/npm/v/@agentbouncr/core.svg?label=npm%3A%20%40agentbouncr%2Fcore)](https://www.npmjs.com/package/@agentbouncr/core)
